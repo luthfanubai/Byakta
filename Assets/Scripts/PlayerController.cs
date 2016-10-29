@@ -3,11 +3,14 @@ using System.Collections;
 
 public class PlayerController : MonoBehaviour {
 
-	public float movementSpeed = 5.0f;	
+	public float movementSpeed = 5.0f;
+	public float runSpeedMultiplier = 3.0f;
 	public float mouseSensitivity = 5.0f;	
 //	float rotUpDown = 0;
-	public float upDownRange = 90.0f;
+	float posUpDown = 2;
+	public float upDownRange = 2; //90.0f;
 	public float jumpSpeed = 20.0f;
+	public float cameraDistance = -4.0f;
 
 	float verticalVelocity = 0;
 	bool lari=false;
@@ -26,6 +29,7 @@ public class PlayerController : MonoBehaviour {
 	void Update () {
 
 		#region rotation
+
 		//rotation
 		float rotLeftRight = Input.GetAxis("Mouse X") * mouseSensitivity;
 		transform.Rotate (0, rotLeftRight, 0);
@@ -33,6 +37,12 @@ public class PlayerController : MonoBehaviour {
 //		rotUpDown -= Input.GetAxis ("Mouse Y") * mouseSensitivity;
 //		rotUpDown = Mathf.Clamp(rotUpDown, -upDownRange, upDownRange);
 //		Camera.main.transform.localRotation = Quaternion.Euler(rotUpDown, 0,0);
+
+		posUpDown -= Input.GetAxis("Mouse Y") * 0.03f;
+		posUpDown = Mathf.Clamp(posUpDown, 0.5f , 3);
+		Camera.main.transform.localPosition = new Vector3(0, posUpDown, cameraDistance);
+		Debug.Log(posUpDown);
+
 
 		#endregion
 
@@ -47,12 +57,12 @@ public class PlayerController : MonoBehaviour {
 
 
 		if (lari == false && Input.GetKeyDown (KeyCode.LeftShift)) {
-			movementSpeed *= 2;
+			movementSpeed *= runSpeedMultiplier;
 			lari = true;
 		}
 		if(lari == true && Input.GetKeyUp(KeyCode.LeftShift))
 		{
-			movementSpeed *= 0.5f;
+			movementSpeed /= runSpeedMultiplier;
 			lari = false;
 		}
 
@@ -91,13 +101,6 @@ public class PlayerController : MonoBehaviour {
 	}
 
 
-	void OnControllerColliderHit(ControllerColliderHit hit)
-	{
-		//GameObject.FindWithTag("Enemy");
-		if (GameObject.FindWithTag ("Enemy") == hit.gameObject) {
-			hit.gameObject.GetComponent<EnemyController> ().HitPoint--;
-		}
-		//Destroy (col.gameObject);
-	}
+
 
 }
