@@ -4,11 +4,12 @@ using System.Collections;
 public class EnemyController : MonoBehaviour {
 
 	CharacterController enemyController;
-	Vector3 vektor;
+	static PlayerController player;
+
 	TextMesh txtHP;
-	GameObject player;
+	//GameObject player;
 	public float movementSpeed = 3.0f;
-	float verticalVelocity = 0;
+//	float verticalVelocity = 0;
 
 	[SerializeField]
 	private int hitPoint;
@@ -29,10 +30,9 @@ public class EnemyController : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		enemyController = GetComponent<CharacterController> ();
-		player = GameObject.FindWithTag ("Player");
+		player = GameObject.FindWithTag ("Player").GetComponent<PlayerController>();
 		txtHP = GetComponentInChildren<TextMesh> ();
 	
-		vektor = new Vector3 (0, 0, -1);
 	}
 	
 	// Update is called once per frame
@@ -47,7 +47,7 @@ public class EnemyController : MonoBehaviour {
 			transform.LookAt (player.transform);	
 			enemyController.Move (moveTo.normalized * Time.deltaTime * movementSpeed);
 		}
-		Debug.Log (distance);
+//		Debug.Log (distance);
 
 
 
@@ -56,8 +56,8 @@ public class EnemyController : MonoBehaviour {
 	void OnControllerColliderHit(ControllerColliderHit hit)
 	{
 		//GameObject.FindWithTag("Enemy");
-		if (GameObject.FindWithTag ("Player") == hit.gameObject) {
-			HitPoint--;
+		if (player.gameObject == hit.gameObject && player.IsAttacking) {
+			HitPoint -= 10;
 		}
 		//Destroy (col.gameObject);
 	}

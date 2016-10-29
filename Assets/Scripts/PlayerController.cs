@@ -11,19 +11,35 @@ public class PlayerController : MonoBehaviour {
 	public float upDownRange = 2; //90.0f;
 	public float jumpSpeed = 20.0f;
 	public float cameraDistance = -4.0f;
+	bool isAttacking = false;
 
 	float verticalVelocity = 0;
 	bool lari=false;
+	MeshRenderer mrSphere;
+	public Animator anim;
+	new AudioSource[] audio;
 
 	Vector3 faceVector, sideVector;
 
 	CharacterController characterController;
 
+
+	public bool IsAttacking
+	{
+		get { return isAttacking; }
+		private set { isAttacking = value; }
+	}
+
+
 	void Start () {
 		characterController = GetComponent<CharacterController>();
+		mrSphere = GetComponentInChildren<MeshRenderer> ();
+		anim.GetComponent<Animator>();
+		audio = GetComponents<AudioSource> ();
 
 		Cursor.lockState = CursorLockMode.Locked;
 		//Cursor.visible = false;
+
 	}
 
 	void Update () {
@@ -40,8 +56,8 @@ public class PlayerController : MonoBehaviour {
 
 		posUpDown -= Input.GetAxis("Mouse Y") * 0.03f;
 		posUpDown = Mathf.Clamp(posUpDown, 0.5f , 3);
-		Camera.main.transform.localPosition = new Vector3(0, posUpDown, cameraDistance);
-		Debug.Log(posUpDown);
+		Camera.main.transform.localPosition = new Vector3(0, posUpDown, -4.0f);
+//		Debug.Log(posUpDown);
 
 
 		#endregion
@@ -55,14 +71,19 @@ public class PlayerController : MonoBehaviour {
 		float forwardSpeed = Input.GetAxis("Vertical") * movementSpeed;
 		float sideSpeed = Input.GetAxis ("Horizontal") * movementSpeed;
 
+		//animation blend tree
+		anim.SetFloat("inputV", forwardSpeed);
+		anim.SetFloat("inputH", sideSpeed);
 
 		if (lari == false && Input.GetKeyDown (KeyCode.LeftShift)) {
 			movementSpeed *= runSpeedMultiplier;
+			mrSphere.material.color = Color.red;
 			lari = true;
 		}
 		if(lari == true && Input.GetKeyUp(KeyCode.LeftShift))
 		{
 			movementSpeed /= runSpeedMultiplier;
+			mrSphere.material.color = new Color (0.800f, 0.501f, 0.267f, 1.000f);
 			lari = false;
 		}
 
@@ -79,7 +100,6 @@ public class PlayerController : MonoBehaviour {
 		//Vector3 speed = new Vector3 (forwardSpeed, verticalVelocity,  sideSpeed);
 		Vector3 speed = faceVector * forwardSpeed + sideVector * sideSpeed;
 		speed.y = verticalVelocity;
-		//Debug.Log(verticalVelocity);
 
 		// characterController.SimpleMove (speed);
 		if(characterController.Move(speed * Time.deltaTime) == CollisionFlags.CollidedBelow)
@@ -87,7 +107,8 @@ public class PlayerController : MonoBehaviour {
 			verticalVelocity = 0;
 		}
 
-		if(characterController.isGrounded && Input.GetButtonDown("Jump"))
+//		if(characterController.isGrounded && Input.GetButtonDown("Jump"))
+		if(Input.GetButtonDown("Jump"))
 		{
 			verticalVelocity = jumpSpeed;
 		}
@@ -98,8 +119,22 @@ public class PlayerController : MonoBehaviour {
 //			transform.position = Vector3.zero;
 //		}
 
-	}
+		if (Input.GetMouseButtonUp (0)) {
+			anim.SetBool ("attack", true);
 
+
+			int n = Random.Range (0, 3);
+			audio[n].Play ();
+
+			IsAttacking = true;
+		}
+		else 
+		{
+			anim.SetBool ("attack", false);
+			IsAttacking = false;
+		}
+
+	}
 
 
 
