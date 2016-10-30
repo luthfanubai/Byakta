@@ -10,7 +10,7 @@ public class PlayerController : MonoBehaviour {
 	float posUpDown = 2;
 	public float upDownRange = 2; //90.0f;
 	public float jumpSpeed = 20.0f;
-	public float cameraDistance = -4.0f;
+	public float cameraDistance = -5.0f;
 	bool isAttacking = false;
 
 	float verticalVelocity = 0;
@@ -56,7 +56,7 @@ public class PlayerController : MonoBehaviour {
 
 		posUpDown -= Input.GetAxis("Mouse Y") * 0.03f;
 		posUpDown = Mathf.Clamp(posUpDown, 0.5f , 3);
-		Camera.main.transform.localPosition = new Vector3(0, posUpDown, -4.0f);
+		Camera.main.transform.localPosition = new Vector3(0, posUpDown, -5.0f);
 //		Debug.Log(posUpDown);
 
 
