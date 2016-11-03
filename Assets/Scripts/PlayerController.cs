@@ -1,72 +1,200 @@
 ﻿using UnityEngine;
 using System.Collections;
+using UnityEngine.UI;
 
-public class PlayerController : MonoBehaviour {
+public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
+{
+	[SerializeField]
+	Transform focusObject;
 
-	public float movementSpeed = 5.0f;
-	public float runSpeedMultiplier = 3.0f;
-	public float mouseSensitivity = 5.0f;	
-//	float rotUpDown = 0;
-	float posUpDown = 2;
-	public float upDownRange = 2; //90.0f;
-	public float jumpSpeed = 20.0f;
+
+	public BulletController bullet;
 	public float cameraDistance = -5.0f;
-	bool isAttacking = false;
-
-	float verticalVelocity = 0;
-	bool lari=false;
-	MeshRenderer mrSphere;
+	public float jumpSpeed = 20.0f;
+	public float mouseSensitivity = 5.0f;
+	public float runSpeedMultiplier = 3.0f;
 	public Animator anim;
-	new AudioSource[] audio;
+	float verticalVelocity = 0;
 
-	Vector3 faceVector, sideVector;
+	bool isAttacking = false;
+	bool isDead = false;
+	bool isJumping = false;
+	bool isRunning = false;
+	bool isWalking = false;
 
+	float manaPoint;
+	float maxManaPoint = 100.0f;
+	float manaRegen = 2.5f;
+	public float manaCost = 10.0f;
+
+	AudioSource[] attackSound;
 	CharacterController characterController;
+	Slider sliderHP;
+	Slider sliderMP;
+	GameObject notEnoughMana;
+	Vector3 faceVector, sideVector;
+	Vector3[] respawnPos;
 
+	#region IRangedAttacker implementation
+
+	Transform barrelTip;
+	Transform IRangedAttacker.BarrelTip 
+	{
+		get 
+		{
+			return barrelTip;
+		}
+		set
+		{
+			barrelTip = value;
+		}
+	}
+
+	#endregion
+
+	#region Property
+	public Transform FocusObject
+	{
+		get 
+		{
+			return focusObject;
+		}
+	}
+
+	public override float HitPoint 
+	{
+		get 
+		{
+			return base.HitPoint;
+		}
+		set 
+		{
+			base.HitPoint = value;
+			sliderHP.value = hitPoint;
+		}
+	}
+
+	public float ManaPoint 
+	{
+		get 
+		{
+			return manaPoint;
+		}
+		set 
+		{
+			manaPoint = value;
+			sliderMP.value = manaPoint;
+
+		}
+	}
+
+	public bool IsRunning
+	{
+		get 
+		{ 
+			return isRunning; 
+		}
+		private set 
+		{ 
+			isRunning = value; 
+			anim.SetBool("run", IsRunning);
+		}
+	}
+
+	public bool IsWalking
+	{
+		get 
+		{ 
+			return isWalking; 
+		}
+		private set 
+		{ 
+			isWalking = value;
+		}
+	}
+
+	public bool IsJumping
+	{
+		get 
+		{ 
+			return isJumping; 
+		}
+		private set 
+		{ 
+			isJumping = value; 
+			anim.SetBool("jump", IsJumping);
+		}
+	}
 
 	public bool IsAttacking
 	{
-		get { return isAttacking; }
-		private set { isAttacking = value; }
+		get 
+		{ 
+			return isAttacking; 
+		}
+		private set 
+		{ 
+			isAttacking = value; 
+		}
 	}
 
+	public bool IsDead
+	{
+		get 
+		{ 
+			return isDead; 
+		}
+		private set 
+		{
+			isDead = value; 
+			anim.SetBool ("dead", isDead);
+		}
+	}
 
-	void Start () {
+	#endregion
+
+	void Start () 
+	{
 		characterController = GetComponent<CharacterController>();
-		mrSphere = GetComponentInChildren<MeshRenderer> ();
 		anim.GetComponent<Animator>();
-		audio = GetComponents<AudioSource> ();
+		attackSound = GetComponents<AudioSource> ();
+		sliderHP = GameObject.Find ("playerHP").GetComponent<Slider> ();
+		sliderMP = GameObject.Find ("playerMP").GetComponent<Slider> ();
+		notEnoughMana = GameObject.Find ("NotEnoughMana");
+		//barrelTip = transform.FindChild ("Sphere");
+		((IRangedAttacker)this).BarrelTip = transform.FindChild ("Barrel Tip");
 
-		Cursor.lockState = CursorLockMode.Locked;
-		//Cursor.visible = false;
+		ally = Alliance.Player;
 
+		respawnPos = new Vector3[5];
+		respawnPos[0] = transform.position;
+
+		HitPoint = maxHitPoint;
+		ManaPoint = maxManaPoint;
+
+
+		Cursor.lockState = CursorLockMode.Locked; //atau Cursor.visible = false;
 	}
 
-	void Update () {
+	void FixedUpdate()
+	{
+		ManaPoint += manaRegen * Time.fixedDeltaTime;
+	}
 
-		#region rotation
+	void Update () 
+	{
+		if (Input.anyKey) 
+		{
+			anim.transform.rotation = focusObject.transform.rotation;
+		}
 
-		//rotation
-		float rotLeftRight = Input.GetAxis("Mouse X") * mouseSensitivity;
-		transform.Rotate (0, rotLeftRight, 0);
+		Debug.Log (notEnoughMana);
 
-//		rotUpDown -= Input.GetAxis ("Mouse Y") * mouseSensitivity;
-//		rotUpDown = Mathf.Clamp(rotUpDown, -upDownRange, upDownRange);
-//		Camera.main.transform.localRotation = Quaternion.Euler(rotUpDown, 0,0);
-
-		posUpDown -= Input.GetAxis("Mouse Y") * 0.03f;
-		posUpDown = Mathf.Clamp(posUpDown, 0.5f , 3);
-		Camera.main.transform.localPosition = new Vector3(0, posUpDown, -5.0f);
-//		Debug.Log(posUpDown);
-
-
-		#endregion
+		CheckCamera ();
 
 		#region movement
-
-		//movement
-		faceVector = transform.TransformDirection(Vector3.forward);
-		sideVector = transform.TransformDirection (Vector3.right);
+		faceVector = focusObject.TransformDirection(Vector3.forward);
+		sideVector = focusObject.TransformDirection (Vector3.right);
 
 		float forwardSpeed = Input.GetAxis("Vertical") * movementSpeed;
 		float sideSpeed = Input.GetAxis ("Horizontal") * movementSpeed;
@@ -75,67 +203,142 @@ public class PlayerController : MonoBehaviour {
 		anim.SetFloat("inputV", forwardSpeed);
 		anim.SetFloat("inputH", sideSpeed);
 
-		if (lari == false && Input.GetKeyDown (KeyCode.LeftShift)) {
+		#region Running
+		if (isRunning == false && Input.GetKeyDown (KeyCode.LeftShift)) 
+		{
 			movementSpeed *= runSpeedMultiplier;
-			mrSphere.material.color = Color.red;
-			lari = true;
+			IsRunning = true;
 		}
-		if(lari == true && Input.GetKeyUp(KeyCode.LeftShift))
+
+		if(isRunning == true && Input.GetKeyUp(KeyCode.LeftShift))
 		{
 			movementSpeed /= runSpeedMultiplier;
-			mrSphere.material.color = new Color (0.800f, 0.501f, 0.267f, 1.000f);
-			lari = false;
+			IsRunning = false;
 		}
 
 
-		verticalVelocity += Physics.gravity.y * Time.fixedDeltaTime;
 
 		if(!characterController.isGrounded)
 		{
 			forwardSpeed = forwardSpeed * 0.5f;
 			sideSpeed = sideSpeed * 0.5f;
 		}
+		#endregion
 
+		//Gravity works here
+		verticalVelocity += Physics.gravity.y * Time.deltaTime;
+
+		//legacy code:
 		//Vector3 speed = new Vector3 (sideSpeed, Physics.gravity.y, forwardSpeed);
 		//Vector3 speed = new Vector3 (forwardSpeed, verticalVelocity,  sideSpeed);
 		Vector3 speed = faceVector * forwardSpeed + sideVector * sideSpeed;
 		speed.y = verticalVelocity;
 
-		// characterController.SimpleMove (speed);
-		if(characterController.Move(speed * Time.deltaTime) == CollisionFlags.CollidedBelow)
+		#region Move/Walk
+		//legacy code:
+		//characterController.SimpleMove (speed);
+		if(characterController.Move(speed * Time.deltaTime) == CollisionFlags.CollidedBelow)  //or && characterController.isGrounded)
 		{
+			IsJumping = false;
 			verticalVelocity = 0;
 		}
+		#endregion //move/walk
 
-//		if(characterController.isGrounded && Input.GetButtonDown("Jump"))
+		#region Jump
+		//Infinite Jump
+		//if(characterController.isGrounded && Input.GetButtonDown("Jump"))
 		if(Input.GetButtonDown("Jump"))
 		{
+			IsJumping = true;
 			verticalVelocity = jumpSpeed;
 		}
-			
-		#endregion
+		#endregion //jump
 
-//		if (Input.GetKey (KeyCode.Space)) {
-//			transform.position = Vector3.zero;
-//		}
+		#endregion //movement
 
-		if (Input.GetMouseButtonUp (0)) {
-			anim.SetBool ("attack", true);
-
-
-			int n = Random.Range (0, 3);
-			audio[n].Play ();
-
-			IsAttacking = true;
-		}
-		else 
+		#region Attack
+		if (Input.GetMouseButtonUp (0)) //Melee Attack
 		{
-			anim.SetBool ("attack", false);
-			IsAttacking = false;
-		}
+			IsAttacking = true;
+			anim.SetBool ("attack", isAttacking);
 
+			//random AttackSound
+			int n = Random.Range (0, 2);
+			attackSound[n].Play ();
+		}
+		else if(Input.GetMouseButtonUp(1)) //Ranged Attack
+		{
+			if(ManaPoint >= manaCost)
+			{
+				IsAttacking = true;
+				bullet.Launch(anim.transform.forward, this, (IRangedAttacker)this);
+				ManaPoint -= manaCost;
+				notEnoughMana.SetActive(false);
+			}
+			else 
+			{
+				notEnoughMana.SetActive(true);
+				return;
+			}
+		}
+		else
+		{
+			IsAttacking = false;
+			anim.SetBool("attack", isAttacking);
+		}
+		#endregion //attack
+
+		#region DeathFall
+		if (transform.position.y <= -20) 
+		{
+			Death();
+			transform.position = Vector3.zero;
+		}
+		#endregion //DeathFall
 	}
 
 
+	float horizontalInput, verticalInput, accVerticalInput;
+	void CheckCamera ()
+	{
+		horizontalInput = Input.GetAxis ("Mouse X") * mouseSensitivity;
+		verticalInput = -Input.GetAxis ("Mouse Y") ; //*mouseSensitivity;
 
+		//Rotasi terhadap sumbu Y
+		Camera.main.transform.RotateAround (transform.position, focusObject.TransformDirection (Vector3.up), horizontalInput);
+		focusObject.Rotate (focusObject.TransformDirection(Vector3.up), horizontalInput);
+
+		//if (verticalInput + accVerticalInput > 60) {
+		if (verticalInput > 60 - accVerticalInput) 
+		{
+			verticalInput = 60 - accVerticalInput;
+		}
+		//else if(verticalInput + accVerticalInput < 0) {
+		else if(verticalInput < -accVerticalInput) 
+		{
+			verticalInput = -accVerticalInput;
+		}
+		accVerticalInput += verticalInput;
+
+		//Rotasi terhadap sumbu X
+		Camera.main.transform.RotateAround (transform.position, focusObject.TransformDirection (Vector3.right), verticalInput);
+	}
+
+	void Revive()
+	{
+//		transform.position = Vector3.zero;
+		transform.position = respawnPos[0];
+		HitPoint = maxHitPoint;
+		IsDead = false;
+	}
+
+	#region implemented abstract members of LivingObject
+	protected override void Death ()
+	{
+		IsDead = true;
+
+		Revive ();
+		//do whatever you want
+	}
+	#endregion 
 }
