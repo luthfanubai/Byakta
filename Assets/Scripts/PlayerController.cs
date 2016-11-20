@@ -21,26 +21,30 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 	bool isJumping = false;
 	bool isRunning = false;
 	bool isWalking = false;
+	bool canDoubleJump;
+	int jumpCount = 2;
 
 	float manaPoint;
 	float maxManaPoint = 100.0f;
 	float manaRegen = 2.5f;
+	float hitRegen = 2.5f;
 	public float manaCost = 10.0f;
 
 	AudioSource[] attackSound;
 	CharacterController characterController;
 	Slider sliderHP;
 	Slider sliderMP;
-	GameObject notEnoughMana;
+	public GameObject notEnoughMana;
 	Vector3 faceVector, sideVector;
 	Vector3[] respawnPos;
 
 	#region IRangedAttacker implementation
 
 	Transform barrelTip;
-	Transform IRangedAttacker.BarrelTip 
+
+	Transform IRangedAttacker.BarrelTip
 	{
-		get 
+		get
 		{
 			return barrelTip;
 		}
@@ -53,34 +57,35 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 	#endregion
 
 	#region Property
+
 	public Transform FocusObject
 	{
-		get 
+		get
 		{
 			return focusObject;
 		}
 	}
 
-	public override float HitPoint 
+	public override float HitPoint
 	{
-		get 
+		get
 		{
 			return base.HitPoint;
 		}
-		set 
+		set
 		{
 			base.HitPoint = value;
 			sliderHP.value = hitPoint;
 		}
 	}
 
-	public float ManaPoint 
+	public float ManaPoint
 	{
-		get 
+		get
 		{
 			return manaPoint;
 		}
-		set 
+		set
 		{
 			manaPoint = value;
 			sliderMP.value = manaPoint;
@@ -90,11 +95,11 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 	public bool IsRunning
 	{
-		get 
+		get
 		{ 
 			return isRunning; 
 		}
-		private set 
+		private set
 		{ 
 			isRunning = value; 
 			anim.SetBool("run", IsRunning);
@@ -103,11 +108,11 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 	public bool IsWalking
 	{
-		get 
+		get
 		{ 
 			return isWalking; 
 		}
-		private set 
+		private set
 		{ 
 			isWalking = value;
 		}
@@ -115,11 +120,11 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 	public bool IsJumping
 	{
-		get 
+		get
 		{ 
 			return isJumping; 
 		}
-		private set 
+		private set
 		{ 
 			isJumping = value; 
 			anim.SetBool("jump", IsJumping);
@@ -128,11 +133,11 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 	public bool IsAttacking
 	{
-		get 
+		get
 		{ 
 			return isAttacking; 
 		}
-		private set 
+		private set
 		{ 
 			isAttacking = value; 
 		}
@@ -140,29 +145,29 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 	public bool IsDead
 	{
-		get 
+		get
 		{ 
 			return isDead; 
 		}
-		private set 
+		private set
 		{
 			isDead = value; 
-			anim.SetBool ("dead", isDead);
+			anim.SetBool("dead", isDead);
 		}
 	}
 
 	#endregion
 
-	void Start () 
+	void Start()
 	{
 		characterController = GetComponent<CharacterController>();
 		anim.GetComponent<Animator>();
-		attackSound = GetComponents<AudioSource> ();
-		sliderHP = GameObject.Find ("playerHP").GetComponent<Slider> ();
-		sliderMP = GameObject.Find ("playerMP").GetComponent<Slider> ();
-		notEnoughMana = GameObject.Find ("NotEnoughMana");
+		attackSound = GetComponents<AudioSource>();
+		sliderHP = GameObject.Find("playerHP").GetComponent<Slider>();
+		sliderMP = GameObject.Find("playerMP").GetComponent<Slider>();
+//		notEnoughMana = GameObject.Find ("NotEnoughMana");
 		//barrelTip = transform.FindChild ("Sphere");
-		((IRangedAttacker)this).BarrelTip = transform.FindChild ("Barrel Tip");
+		((IRangedAttacker)this).BarrelTip = transform.FindChild("Barrel Tip");
 
 		ally = Alliance.Player;
 
@@ -172,6 +177,7 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 		HitPoint = maxHitPoint;
 		ManaPoint = maxManaPoint;
 
+		InitializeSkill();
 
 		Cursor.lockState = CursorLockMode.Locked; //atau Cursor.visible = false;
 	}
@@ -179,38 +185,50 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 	void FixedUpdate()
 	{
 		ManaPoint += manaRegen * Time.fixedDeltaTime;
+		if (ManaPoint > maxManaPoint)
+		{
+			ManaPoint = maxManaPoint;
+		}
+
+		HitPoint += hitRegen * Time.fixedDeltaTime;
+		if (HitPoint > maxHitPoint)
+		{
+			HitPoint = maxHitPoint;
+		}
 	}
 
-	void Update () 
+	WrappedCoroutine unknownAction;
+
+	void Update()
 	{
-		if (Input.anyKey) 
+		if (Input.anyKey)
 		{
 			anim.transform.rotation = focusObject.transform.rotation;
 		}
 
-		Debug.Log (notEnoughMana);
+//		Debug.Log (notEnoughMana);
 
-		CheckCamera ();
+		CheckCamera();
 
 		#region movement
 		faceVector = focusObject.TransformDirection(Vector3.forward);
-		sideVector = focusObject.TransformDirection (Vector3.right);
+		sideVector = focusObject.TransformDirection(Vector3.right);
 
 		float forwardSpeed = Input.GetAxis("Vertical") * movementSpeed;
-		float sideSpeed = Input.GetAxis ("Horizontal") * movementSpeed;
+		float sideSpeed = Input.GetAxis("Horizontal") * movementSpeed;
 
 		//animation blend tree
 		anim.SetFloat("inputV", forwardSpeed);
 		anim.SetFloat("inputH", sideSpeed);
 
 		#region Running
-		if (isRunning == false && Input.GetKeyDown (KeyCode.LeftShift)) 
+		if (isRunning == false && Input.GetKeyDown(KeyCode.LeftShift))
 		{
 			movementSpeed *= runSpeedMultiplier;
 			IsRunning = true;
 		}
 
-		if(isRunning == true && Input.GetKeyUp(KeyCode.LeftShift))
+		if (isRunning == true && Input.GetKeyUp(KeyCode.LeftShift))
 		{
 			movementSpeed /= runSpeedMultiplier;
 			IsRunning = false;
@@ -218,7 +236,7 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 
 
-		if(!characterController.isGrounded)
+		if (!characterController.isGrounded)
 		{
 			forwardSpeed = forwardSpeed * 0.5f;
 			sideSpeed = sideSpeed * 0.5f;
@@ -237,48 +255,63 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 		#region Move/Walk
 		//legacy code:
 		//characterController.SimpleMove (speed);
-		if(characterController.Move(speed * Time.deltaTime) == CollisionFlags.CollidedBelow)  //or && characterController.isGrounded)
+		if (characterController.Move(speed * Time.deltaTime) == CollisionFlags.CollidedBelow)  //or && characterController.isGrounded)
 		{
 			IsJumping = false;
 			verticalVelocity = 0;
+
 		}
 		#endregion //move/walk
 
 		#region Jump
+
 		//Infinite Jump
-		//if(characterController.isGrounded && Input.GetButtonDown("Jump"))
-		if(Input.GetButtonDown("Jump"))
+//		if(characterController.isGrounded && Input.GetButtonDown("Jump"))
+		if (Input.GetButtonDown("Jump"))
 		{
 			IsJumping = true;
 			verticalVelocity = jumpSpeed;
+			canDoubleJump = true;
 		}
+//		else if(Input.GetButtonDown("Jump") && canDoubleJump == true)
+//		{
+//			verticalVelocity = jumpSpeed;
+//			canDoubleJump = false;
+//			anim.SetBool("doubleJump", true);
+//		}
+//		else
+//		{
+//			anim.SetBool("doubleJump", false);
+//		}
+			
 		#endregion //jump
 
 		#endregion //movement
 
 		#region Attack
-		if (Input.GetMouseButtonUp (0)) //Melee Attack
+		//Melee Attack
+		if (Input.GetMouseButtonUp(0))
 		{
-			IsAttacking = true;
-			anim.SetBool ("attack", isAttacking);
-
-			//random AttackSound
-			int n = Random.Range (0, 2);
-			attackSound[n].Play ();
+			if(AllowedToAttack()) meleeAttackWC.Play();
 		}
-		else if(Input.GetMouseButtonUp(1)) //Ranged Attack
+			
+		//Ranged Attack
+		else if (Input.GetMouseButtonUp(1))
 		{
-			if(ManaPoint >= manaCost)
+			if (AllowedToAttack())
 			{
-				IsAttacking = true;
-				bullet.Launch(anim.transform.forward, this, (IRangedAttacker)this);
-				ManaPoint -= manaCost;
-				notEnoughMana.SetActive(false);
-			}
-			else 
-			{
-				notEnoughMana.SetActive(true);
-				return;
+				if (ManaPoint >= manaCost)
+				{
+					IsAttacking = true;
+					bullet.Launch(anim.transform.forward, this, this);
+					ManaPoint -= manaCost;
+					notEnoughMana.SetActive(false);
+				}
+				else
+				{
+					notEnoughMana.SetActive(true);
+					return;
+				}
 			}
 		}
 		else
@@ -289,7 +322,7 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 		#endregion //attack
 
 		#region DeathFall
-		if (transform.position.y <= -20) 
+		if (transform.position.y <= -20)
 		{
 			Death();
 			transform.position = Vector3.zero;
@@ -299,29 +332,41 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 
 	float horizontalInput, verticalInput, accVerticalInput;
-	void CheckCamera ()
+
+	void CheckCamera()
 	{
-		horizontalInput = Input.GetAxis ("Mouse X") * mouseSensitivity;
-		verticalInput = -Input.GetAxis ("Mouse Y") ; //*mouseSensitivity;
+		horizontalInput = Input.GetAxis("Mouse X") * mouseSensitivity;
+		verticalInput = -Input.GetAxis("Mouse Y"); //*mouseSensitivity;
 
 		//Rotasi terhadap sumbu Y
-		Camera.main.transform.RotateAround (transform.position, focusObject.TransformDirection (Vector3.up), horizontalInput);
-		focusObject.Rotate (focusObject.TransformDirection(Vector3.up), horizontalInput);
+		Camera.main.transform.RotateAround(transform.position, focusObject.TransformDirection(Vector3.up), horizontalInput);
+		focusObject.Rotate(focusObject.TransformDirection(Vector3.up), horizontalInput);
+		barrelTip.RotateAround(transform.position, focusObject.TransformDirection(Vector3.up), horizontalInput);
 
 		//if (verticalInput + accVerticalInput > 60) {
-		if (verticalInput > 60 - accVerticalInput) 
+		if (verticalInput > 60 - accVerticalInput)
 		{
 			verticalInput = 60 - accVerticalInput;
 		}
 		//else if(verticalInput + accVerticalInput < 0) {
-		else if(verticalInput < -accVerticalInput) 
+		else if (verticalInput < -accVerticalInput)
 		{
 			verticalInput = -accVerticalInput;
 		}
 		accVerticalInput += verticalInput;
 
 		//Rotasi terhadap sumbu X
-		Camera.main.transform.RotateAround (transform.position, focusObject.TransformDirection (Vector3.right), verticalInput);
+		Camera.main.transform.RotateAround(transform.position, focusObject.TransformDirection(Vector3.right), verticalInput);
+	}
+
+	void OnCollisionEnter(Collision col)
+	{
+		Debug.Log(col);
+	}
+
+	void OnControllerColliderHit(ControllerColliderHit hit)
+	{
+		Debug.Log(hit.gameObject);
 	}
 
 	void Revive()
@@ -329,16 +374,43 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 //		transform.position = Vector3.zero;
 		transform.position = respawnPos[0];
 		HitPoint = maxHitPoint;
+		ManaPoint = maxManaPoint;
 		IsDead = false;
 	}
 
 	#region implemented abstract members of LivingObject
-	protected override void Death ()
+
+	protected override void Death()
 	{
 		IsDead = true;
 
-		Revive ();
+		Revive();
 		//do whatever you want
 	}
-	#endregion 
+
+	#endregion
+
+	WrappedCoroutine meleeAttackWC;
+
+	IEnumerator MeleeAttack()
+	{
+		IsAttacking = true;
+		anim.SetBool("attack", isAttacking);
+		//random AttackSound
+		int n = Random.Range(0, 2);
+		attackSound[n].Play();
+        yield return new WaitForSeconds(3);
+	}
+
+	void InitializeSkill()
+	{
+		meleeAttackWC = new WrappedCoroutine(this, MeleeAttack());
+	}
+
+	bool AllowedToAttack()
+	{
+		if(meleeAttackWC.IsRunning) return false;
+
+		return true;
+	}
 }

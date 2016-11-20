@@ -53,6 +53,12 @@ public class RangedEnemyController : LivingObject, IRangedAttacker
 		StartCoroutine (Patrol ());
 	}
 
+	void Update()
+	{
+		if (playerDistance <= attackRange) {
+			transform.LookAt (player.FocusObject);
+		}
+	}
 	void OnControllerColliderHit (ControllerColliderHit hit)
 	{
 		Debug.Break ();		
@@ -82,7 +88,6 @@ public class RangedEnemyController : LivingObject, IRangedAttacker
 
 	void Fire (Vector3 direction)
 	{
-		transform.LookAt (player.FocusObject);
 		bullet.Launch (direction, this, (IRangedAttacker)this);
 
 //		transform.LookAt (player.transform.FindChild("FocusObject"));

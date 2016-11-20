@@ -23,7 +23,12 @@ public class BulletController : MonoBehaviour {
 	public void Launch(Vector3 direction, LivingObject caster, IRangedAttacker iRangedAttacker)
 	{
 		BulletController bulletClone;
-		bulletClone = (BulletController)Instantiate (this, iRangedAttacker.BarrelTip.position, iRangedAttacker.BarrelTip.rotation);
+
+		Transform barrelTip = iRangedAttacker.BarrelTip;
+		Vector3 position = barrelTip.position;
+		Quaternion rotation = barrelTip.rotation;
+
+		bulletClone = (BulletController)Instantiate (this, position, rotation);
 		bulletClone.GetComponent<Rigidbody> ().velocity = direction.normalized * bulletSpeed;
 		bulletClone.caster = caster;
 		Destroy (bulletClone.gameObject, timeSpan);

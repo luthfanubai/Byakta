@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-class MyClass
+class WrappedCoroutine
 {
 	bool isRunning;
 	public bool IsRunning 
@@ -9,12 +9,21 @@ class MyClass
 		get { return isRunning; } 
 	}
 
-	public MyClass(MonoBehaviour monoBehaviour, IEnumerator iEnumerator)
+	MonoBehaviour monoBehaviour;
+	IEnumerator iEnumerator;
+
+	public WrappedCoroutine(MonoBehaviour monoBehaviour, IEnumerator iEnumerator)
 	{
-		monoBehaviour.StartCoroutine (Play(iEnumerator));
+		this.monoBehaviour = monoBehaviour;
+		this.iEnumerator = iEnumerator;
 	}
 
-	IEnumerator Play(MonoBehaviour monoBehaviour, IEnumerator ienumerator)
+	public void Play()
+	{
+		if(!isRunning) monoBehaviour.StartCoroutine (_Play(monoBehaviour, iEnumerator));
+	}
+
+	private IEnumerator _Play(MonoBehaviour monoBehaviour, IEnumerator ienumerator)
 	{
 		isRunning = true;
 		yield return monoBehaviour.StartCoroutine (ienumerator);
