@@ -24,7 +24,7 @@ public class OrbController : MonoBehaviour {
 			haloSphere.enabled = false;
 		}
 
-		if (player.IsAttacking) 
+		if (player.IsMeleeAttacking) 
 		{
 			//haloSphere.
 		}

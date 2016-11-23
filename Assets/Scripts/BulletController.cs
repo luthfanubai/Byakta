@@ -38,14 +38,22 @@ public class BulletController : MonoBehaviour {
 	void OnCollisionEnter(Collision hit)
 	{
 		var livingObject = hit.gameObject.GetComponent<LivingObject> ();
-		if (livingObject != null) //exist
-		{
-			if (livingObject.ally != caster.ally) 
-			{
-				livingObject.HitPoint -= bulletDamage;
-			}
-		}
+        if (livingObject != null) //exist
+        {
+            
 
-		Destroy (gameObject);
+            if (livingObject.ally != caster.ally)
+            {
+                livingObject.HitPoint -= bulletDamage;
+            }
+
+        }
+
+        if (hit.gameObject == GameObject.FindGameObjectWithTag("Bullet"))
+        {
+//            Debug.Break();
+            Destroy(gameObject);    
+        }
+
 	}
 }

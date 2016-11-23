@@ -12,11 +12,11 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 	public float cameraDistance = -5.0f;
 	public float jumpSpeed = 20.0f;
 	public float mouseSensitivity = 5.0f;
-	public float runSpeedMultiplier = 3.0f;
+	public float runSpeedMultiplier;
 	public Animator anim;
 	float verticalVelocity = 0;
 
-	bool isAttacking = false;
+	bool isMeleeAttacking = false;
 	bool isDead = false;
 	bool isJumping = false;
 	bool isRunning = false;
@@ -27,8 +27,9 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 	float manaPoint;
 	float maxManaPoint = 100.0f;
 	float manaRegen = 2.5f;
-	float hitRegen = 2.5f;
+    float hitPointRegen = 2.5f;
 	public float manaCost = 10.0f;
+    int strength = 10, intelligent =10, agility = 10;
 
 	AudioSource[] attackSound;
 	CharacterController characterController;
@@ -110,12 +111,12 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 	{
 		get
 		{ 
-			return isWalking; 
+            return anim.GetFloat("inputH") != 0 || anim.GetFloat("inputV") != 0;
 		}
-		private set
-		{ 
-			isWalking = value;
-		}
+//		private set
+//		{ 
+//			isWalking = value;
+//		}
 	}
 
 	public bool IsJumping
@@ -131,15 +132,15 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 		}
 	}
 
-	public bool IsAttacking
+	public bool IsMeleeAttacking
 	{
 		get
 		{ 
-			return isAttacking; 
+            return meleeAttackWC.IsRunning; 
 		}
 		private set
 		{ 
-			isAttacking = value; 
+			isMeleeAttacking = value; 
 		}
 	}
 
@@ -155,6 +156,48 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 			anim.SetBool("dead", isDead);
 		}
 	}
+
+    public int Strength
+    {
+        get 
+        {
+            return strength;
+        }
+        set
+        {
+            strength = value;
+            hitPointRegen = strength * 0.4f;
+
+        }
+    }
+
+    public int Intelligent
+    {
+        get
+        {
+            return intelligent;
+        }
+        set
+        {
+            intelligent = value;
+            manaRegen = intelligent * 0.4f;
+        }
+        
+    }
+
+    public int Agility
+    {
+        get
+        {
+            return agility;
+        }
+        set
+        {
+            agility = value;
+            movementSpeed = agility * 0.5f;
+        }
+    }
+        
 
 	#endregion
 
@@ -172,7 +215,9 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 		ally = Alliance.Player;
 
 		respawnPos = new Vector3[5];
-		respawnPos[0] = transform.position;
+        respawnPos[0] = transform.position;
+        respawnPos[1] = new Vector3(155, 73, 80); //stage 1 keraton
+        respawnPos[2] = new Vector3(584,141, 445);
 
 		HitPoint = maxHitPoint;
 		ManaPoint = maxManaPoint;
@@ -190,7 +235,7 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 			ManaPoint = maxManaPoint;
 		}
 
-		HitPoint += hitRegen * Time.fixedDeltaTime;
+		HitPoint += hitPointRegen * Time.fixedDeltaTime;
 		if (HitPoint > maxHitPoint)
 		{
 			HitPoint = maxHitPoint;
@@ -201,12 +246,38 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 	void Update()
 	{
+        Debug.Log(IsMeleeAttacking);
+
 		if (Input.anyKey)
 		{
 			anim.transform.rotation = focusObject.transform.rotation;
 		}
 
-//		Debug.Log (notEnoughMana);
+        #region List Cheat
+        if (Input.GetKey(KeyCode.Insert))
+            transform.position = respawnPos[0];
+        if (Input.GetKey(KeyCode.Home))
+            transform.position = respawnPos[1];
+        if (Input.GetKey(KeyCode.End))
+            transform.position = respawnPos[2];
+        
+        if (Input.GetKey(KeyCode.PageUp))
+        {
+//          manaRegen = maxManaPoint;
+            ManaPoint = maxManaPoint;
+            manaCost = 0;
+        }
+        if (Input.GetKey(KeyCode.PageDown))
+        {
+            hitPointRegen = maxHitPoint;
+        }
+        if(Input.GetKey(KeyCode.Delete))
+            jumpSpeed = 20.0f;
+
+        #endregion
+         
+
+
 
 		CheckCamera();
 
@@ -244,7 +315,7 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 		#endregion
 
 		//Gravity works here
-		verticalVelocity += Physics.gravity.y * Time.deltaTime;
+        verticalVelocity += Physics.gravity.y * Time.deltaTime;
 
 		//legacy code:
 		//Vector3 speed = new Vector3 (sideSpeed, Physics.gravity.y, forwardSpeed);
@@ -292,33 +363,30 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 		//Melee Attack
 		if (Input.GetMouseButtonUp(0))
 		{
-			if(AllowedToAttack()) meleeAttackWC.Play();
+            if(AllowedToAttack()) meleeAttackWC.Play(); 
 		}
 			
 		//Ranged Attack
-		else if (Input.GetMouseButtonUp(1))
+        else if (Input.GetMouseButton(1))
 		{
-			if (AllowedToAttack())
+			if (ManaPoint >= manaCost)
 			{
-				if (ManaPoint >= manaCost)
-				{
-					IsAttacking = true;
-					bullet.Launch(anim.transform.forward, this, this);
-					ManaPoint -= manaCost;
-					notEnoughMana.SetActive(false);
-				}
-				else
-				{
-					notEnoughMana.SetActive(true);
-					return;
-				}
-			}
+                IsMeleeAttacking = false;
+				bullet.Launch(anim.transform.forward, this, this);
+				ManaPoint -= manaCost;
+                
+            }
+            else
+            {
+                notEnoughMana.SetActive(true);
+		    }
 		}
 		else
 		{
-			IsAttacking = false;
-			anim.SetBool("attack", isAttacking);
+			IsMeleeAttacking = false;
+			anim.SetBool("attack", isMeleeAttacking);
 		}
+        if(ManaPoint >= manaCost) notEnoughMana.SetActive(false);
 		#endregion //attack
 
 		#region DeathFall
@@ -361,12 +429,12 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 	void OnCollisionEnter(Collision col)
 	{
-		Debug.Log(col);
+//		Debug.Log(col);
 	}
 
 	void OnControllerColliderHit(ControllerColliderHit hit)
 	{
-		Debug.Log(hit.gameObject);
+//		Debug.Log(hit.gameObject);
 	}
 
 	void Revive()
@@ -394,22 +462,31 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 	IEnumerator MeleeAttack()
 	{
-		IsAttacking = true;
-		anim.SetBool("attack", isAttacking);
+		IsMeleeAttacking = true;
+		anim.SetBool("attack", isMeleeAttacking);
 		//random AttackSound
 		int n = Random.Range(0, 2);
 		attackSound[n].Play();
-        yield return new WaitForSeconds(3);
+
+        yield return new WaitForSeconds(2);
 	}
 
 	void InitializeSkill()
 	{
-		meleeAttackWC = new WrappedCoroutine(this, MeleeAttack());
+        meleeAttackWC = new WrappedCoroutine(this, MeleeAttack);
 	}
 
 	bool AllowedToAttack()
 	{
-		if(meleeAttackWC.IsRunning) return false;
+		if(meleeAttackWC.IsRunning) 
+            return false;
+        if (IsJumping)
+            return false;
+        if (IsRunning)
+            return false;
+//        if (IsWalking)
+//            return false;
+        
 
 		return true;
 	}

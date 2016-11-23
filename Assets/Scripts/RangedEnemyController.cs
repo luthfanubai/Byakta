@@ -59,11 +59,20 @@ public class RangedEnemyController : LivingObject, IRangedAttacker
 			transform.LookAt (player.FocusObject);
 		}
 	}
+
+    void OnTriggerEnter(Collider col)
+    {
+
+        if (col.gameObject == GameObject.FindGameObjectWithTag("MeleeTip") && player.IsMeleeAttacking) {
+            HitPoint -= 10;
+        }
+    }
+
 	void OnControllerColliderHit (ControllerColliderHit hit)
 	{
-		Debug.Break ();		
+//		Debug.Break ();		
 		//GameObject.FindWithTag("Enemy");
-		if (player.gameObject == hit.gameObject && player.IsAttacking) {
+		if (player.gameObject == hit.gameObject && player.IsMeleeAttacking) {
 			HitPoint -= 10;
 		}
 		//Destroy (col.gameObject);

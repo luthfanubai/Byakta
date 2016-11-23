@@ -6,6 +6,9 @@ public class EnemyController : LivingObject {
 	public static PlayerController player;
 	float playerDistance;
 
+    [SerializeField]
+    GameObject meleeTip;
+
 	CharacterController enemyController;
 	TextMesh txtHP;
 
@@ -32,14 +35,22 @@ public class EnemyController : LivingObject {
 
 		StartCoroutine (Patrol ());
 	}
+        
+    void OnTriggerEnter(Collider col)
+    {
+        
+        if (col.gameObject == GameObject.FindGameObjectWithTag("MeleeTip") && player.IsMeleeAttacking) {
+            HitPoint -= 10;
+        }
+    }
 
 	void OnControllerColliderHit (ControllerColliderHit hit)
 	{
 //		Debug.Break ();		
 		//GameObject.FindWithTag("Enemy");
-		if (player.gameObject == hit.gameObject && player.IsAttacking) {
-			HitPoint -= 10;
-		}
+//		if (player.gameObject == hit.gameObject && player.IsMeleeAttacking) {
+//			HitPoint -= 10;
+//		}
 		//Destroy (col.gameObject);
 	}
 

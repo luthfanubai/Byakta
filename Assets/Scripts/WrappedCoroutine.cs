@@ -1,32 +1,75 @@
 using UnityEngine;
 using System.Collections;
 
-class WrappedCoroutine
+
+public class WrappedCoroutine
 {
-	bool isRunning;
-	public bool IsRunning 
-	{ 
-		get { return isRunning; } 
-	}
+    public delegate IEnumerator Routine();
+    private Routine routine;
 
-	MonoBehaviour monoBehaviour;
-	IEnumerator iEnumerator;
+    private MonoBehaviour monobehaviour;
 
-	public WrappedCoroutine(MonoBehaviour monoBehaviour, IEnumerator iEnumerator)
-	{
-		this.monoBehaviour = monoBehaviour;
-		this.iEnumerator = iEnumerator;
-	}
+    public bool IsRunning
+    {
+        get;
+        private set;
+    }
 
-	public void Play()
-	{
-		if(!isRunning) monoBehaviour.StartCoroutine (_Play(monoBehaviour, iEnumerator));
-	}
+    public WrappedCoroutine(MonoBehaviour mono, Routine routine)
+    {
+        this.monobehaviour = mono;
+        this.routine = routine;
+    }
 
-	private IEnumerator _Play(MonoBehaviour monoBehaviour, IEnumerator ienumerator)
-	{
-		isRunning = true;
-		yield return monoBehaviour.StartCoroutine (ienumerator);
-		isRunning = false;
-	}
+    public void Play()
+    {
+        if (!IsRunning)
+        {
+            monobehaviour.StartCoroutine(_Play());
+        }
+    }
+
+    private IEnumerator _Play()
+    {
+        IsRunning = true;
+        yield return monobehaviour.StartCoroutine(routine());
+        IsRunning = false;
+
+    }
+
+
+
+
 }
+
+
+/////OLD WrappedCoroutine
+//class WrappedCoroutine
+//{
+//	bool isRunning;
+//	public bool IsRunning 
+//	{ 
+//		get { return isRunning; } 
+//	}
+//
+//	MonoBehaviour monoBehaviour;
+//	IEnumerator iEnumerator;
+//
+//	public WrappedCoroutine(MonoBehaviour monoBehaviour, IEnumerator iEnumerator)
+//	{
+//		this.monoBehaviour = monoBehaviour;
+//		this.iEnumerator = iEnumerator;
+//	}
+//
+//	public void Play()
+//	{
+//		if(!isRunning) monoBehaviour.StartCoroutine (_Play(monoBehaviour, iEnumerator));
+//	}
+//
+//	private IEnumerator _Play(MonoBehaviour monoBehaviour, IEnumerator ienumerator)
+//	{
+//		isRunning = true;
+//		yield return monoBehaviour.StartCoroutine (ienumerator);
+//		isRunning = false;
+//	}
+//}
