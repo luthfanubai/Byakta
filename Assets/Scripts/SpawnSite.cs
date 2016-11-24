@@ -8,8 +8,8 @@ public class SpawnSite : MonoBehaviour
 
     Vector3 spawnedPosition;
 
-    float enemyRadar = 30f;
-    float respawnTime = 3f;
+    float enemyRadar = 50f;
+    float respawnTime = 60f;
 
     public bool playerDetected
     {
@@ -38,18 +38,10 @@ public class SpawnSite : MonoBehaviour
             {
                 spawnedPosition = transform.position;
                 monsterClone = (GameObject)Instantiate(monsterPrefab, spawnedPosition, Quaternion.identity);
-                monsterClone.SetActive(true);
+                monsterClone.transform.SetParent(transform);
 
                 while (monsterClone != null)
                 {
-                    if ((player.FocusObject.position - monsterClone.transform.position).magnitude > enemyRadar)
-                    {
-                        monsterClone.SetActive(false);
-                        monsterClone.transform.position = transform.position;
-                    }
-                    else if (playerDetected)
-                        monsterClone.SetActive(true);
-                    
                     yield return null;
                 }
                 yield return new WaitForSeconds(respawnTime);

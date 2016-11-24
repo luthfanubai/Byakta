@@ -9,6 +9,7 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 
 
 	public BulletController bullet;
+    public BulletController sword;
 	public float cameraDistance = -5.0f;
 	public float jumpSpeed = 20.0f;
 	public float mouseSensitivity = 5.0f;
@@ -36,8 +37,12 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 	Slider sliderHP;
 	Slider sliderMP;
 	public GameObject notEnoughMana;
+    public GameObject cheatUI;
 	Vector3 faceVector, sideVector;
 	Vector3[] respawnPos;
+    GameObject iconMiniMap;
+    GameObject unitychan;
+
 
 	#region IRangedAttacker implementation
 
@@ -208,6 +213,8 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 		attackSound = GetComponents<AudioSource>();
 		sliderHP = GameObject.Find("playerHP").GetComponent<Slider>();
 		sliderMP = GameObject.Find("playerMP").GetComponent<Slider>();
+        iconMiniMap = transform.FindChild("Icon").gameObject;
+        unitychan = transform.FindChild("unitychan").gameObject;
 //		notEnoughMana = GameObject.Find ("NotEnoughMana");
 		//barrelTip = transform.FindChild ("Sphere");
 		((IRangedAttacker)this).BarrelTip = transform.FindChild("Barrel Tip");
@@ -241,9 +248,15 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 			HitPoint = maxHitPoint;
 		}
 	}
+        
+    IEnumerator ShowCheatUI()
+    {
+        cheatUI.SetActive(true);
+        yield return new WaitForSeconds(1);
+        cheatUI.SetActive(false);
+    }
 
-	WrappedCoroutine unknownAction;
-
+    bool swordCheated, jumpCheated;
 	void Update()
 	{
         Debug.Log(IsMeleeAttacking);
@@ -261,23 +274,37 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
         if (Input.GetKey(KeyCode.End))
             transform.position = respawnPos[2];
         
-        if (Input.GetKey(KeyCode.PageUp))
-        {
-//          manaRegen = maxManaPoint;
-            ManaPoint = maxManaPoint;
-            manaCost = 0;
-        }
         if (Input.GetKey(KeyCode.PageDown))
         {
+            if(!swordCheated)
+            {
+                swordCheated = true;
+                StartCoroutine(ShowCheatUI());
+            }
+        }
+        if (Input.GetKey(KeyCode.PageUp))
+        {
             hitPointRegen = maxHitPoint;
+            ManaPoint = maxManaPoint;
+            manaCost = 0;
+            StartCoroutine(ShowCheatUI());
         }
         if(Input.GetKey(KeyCode.Delete))
-            jumpSpeed = 20.0f;
+            if(!jumpCheated)
+            {  
+                jumpCheated = true;
+                jumpSpeed = 10.0f;
+                StartCoroutine(ShowCheatUI());
+            }
+
+        if(swordCheated)
+            ((IRangedAttacker)this).BarrelTip = transform.FindChild("Barrel Tip2");
 
         #endregion
          
 
 
+        AdjustMinimapIcon();
 
 		CheckCamera();
 
@@ -337,56 +364,106 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 		#region Jump
 
 		//Infinite Jump
-//		if(characterController.isGrounded && Input.GetButtonDown("Jump"))
-		if (Input.GetButtonDown("Jump"))
-		{
-			IsJumping = true;
-			verticalVelocity = jumpSpeed;
-			canDoubleJump = true;
-		}
-//		else if(Input.GetButtonDown("Jump") && canDoubleJump == true)
-//		{
-//			verticalVelocity = jumpSpeed;
-//			canDoubleJump = false;
-//			anim.SetBool("doubleJump", true);
-//		}
-//		else
-//		{
-//			anim.SetBool("doubleJump", false);
-//		}
-			
+        if(jumpCheated)
+        {
+            if (Input.GetButtonDown("Jump"))
+            {
+                IsJumping = true;
+                verticalVelocity = jumpSpeed;
+                canDoubleJump = true;
+            }
+        }
+        else
+        {
+    		if(characterController.isGrounded && Input.GetButtonDown("Jump"))
+            {
+                IsJumping = true;
+                verticalVelocity = jumpSpeed;
+                canDoubleJump = true;
+            }
+            
+    		else if(Input.GetButtonDown("Jump") && canDoubleJump == true)
+    		{
+    			verticalVelocity = jumpSpeed;
+    			canDoubleJump = false;
+    			anim.SetBool("doubleJump", true);
+    		}
+    		else
+    		{
+    			anim.SetBool("doubleJump", false);
+    		}
+        }
 		#endregion //jump
 
 		#endregion //movement
 
 		#region Attack
 		//Melee Attack
-		if (Input.GetMouseButtonUp(0))
-		{
-            if(AllowedToAttack()) meleeAttackWC.Play(); 
-		}
-			
-		//Ranged Attack
-        else if (Input.GetMouseButton(1))
-		{
-			if (ManaPoint >= manaCost)
-			{
-                IsMeleeAttacking = false;
-				bullet.Launch(anim.transform.forward, this, this);
-				ManaPoint -= manaCost;
-                
+        if(!swordCheated)
+        {
+            if (Input.GetMouseButtonUp(0))
+            {
+                if(AllowedToAttack()) meleeAttackWC.Play(); 
+            }
+
+            //Ranged Attack
+            else if (Input.GetMouseButtonUp(1))
+            {
+                if (ManaPoint >= manaCost)
+                {
+                    IsMeleeAttacking = false;
+                    if(!swordCheated) 
+                        bullet.Launch(anim.transform.forward, this, this);
+                    else
+                        sword.Launch(anim.transform.forward, this, this);
+                    ManaPoint -= manaCost;
+
+                }
+                else
+                {
+                    notEnoughMana.SetActive(true);
+                }
             }
             else
             {
-                notEnoughMana.SetActive(true);
-		    }
-		}
-		else
-		{
-			IsMeleeAttacking = false;
-			anim.SetBool("attack", isMeleeAttacking);
-		}
-        if(ManaPoint >= manaCost) notEnoughMana.SetActive(false);
+                IsMeleeAttacking = false;
+                anim.SetBool("attack", isMeleeAttacking);
+            }
+            if(ManaPoint >= manaCost) notEnoughMana.SetActive(false);
+        }
+        else
+        {
+            if (Input.GetMouseButtonUp(0))
+            {
+                if(AllowedToAttack()) meleeAttackWC.Play(); 
+            }
+
+            //Ranged Attack
+            else if (Input.GetMouseButton(1))
+            {
+                if (ManaPoint >= manaCost)
+                {
+                    IsMeleeAttacking = false;
+                    if(!swordCheated) 
+                        bullet.Launch(anim.transform.forward, this, this);
+                    else
+                        sword.Launch(anim.transform.forward, this, this);
+                    ManaPoint -= manaCost;
+
+                }
+                else
+                {
+                    notEnoughMana.SetActive(true);
+                }
+            }
+            else
+            {
+                IsMeleeAttacking = false;
+                anim.SetBool("attack", isMeleeAttacking);
+            }
+            if(ManaPoint >= manaCost) notEnoughMana.SetActive(false);
+        }
+
 		#endregion //attack
 
 		#region DeathFall
@@ -397,6 +474,12 @@ public class PlayerController : LivingObject, IRangedAttacker, IMeleeAttacker
 		}
 		#endregion //DeathFall
 	}
+
+    void AdjustMinimapIcon()
+    {
+        iconMiniMap.transform.rotation = unitychan.transform.rotation;
+    }
+
 
 
 	float horizontalInput, verticalInput, accVerticalInput;
